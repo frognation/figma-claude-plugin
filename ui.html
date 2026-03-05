@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 13px; color: #1a1a1a; background: #fff; overflow-x: hidden; }
+
+  .header { padding: 14px 16px; border-bottom: 1px solid #e5e5e5; display: flex; align-items: center; gap: 8px; }
+  .header h1 { font-size: 14px; font-weight: 600; }
+  .saved-badge { font-size: 10px; color: #38a169; margin-left: auto; }
+
+  .section { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; }
+  .section-title { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+
+  .row { display: flex; gap: 6px; }
+  .input { border: 1px solid #ddd; border-radius: 6px; padding: 7px 10px; font-size: 12px; flex: 1; outline: none; font-family: inherit; }
+  .input:focus { border-color: #7C4DFF; box-shadow: 0 0 0 2px rgba(124,77,255,0.1); }
+
+  .btn { border: none; border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-primary { background: #7C4DFF; color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: #6B3FEE; }
+  .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+  .btn-sm { padding: 5px 12px; font-size: 11px; }
+  .btn-outline { background: none; border: 1px solid #ddd; color: #333; }
+  .btn-outline:hover:not(:disabled) { border-color: #7C4DFF; color: #7C4DFF; }
+  .btn-outline:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .direction-row { display: flex; gap: 6px; }
+  .dir-btn { flex: 1; padding: 8px 6px; border: 1px solid #ddd; border-radius: 6px; background: none; cursor: pointer; font-size: 11px; transition: all 0.15s; text-align: center; }
+  .dir-btn.active { border-color: #7C4DFF; background: #f0ebff; color: #7C4DFF; font-weight: 600; }
+
+  .text-list { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .text-item { background: #f8f8f8; border-radius: 6px; padding: 8px 10px; font-size: 12px; line-height: 1.5; }
+  .item-label { font-size: 10px; color: #999; margin-bottom: 3px; display: flex; align-items: center; gap: 4px; }
+  .item-original { color: #333; word-break: break-word; }
+  .item-translated { color: #7C4DFF; margin-top: 6px; border-top: 1px solid #ede9ff; padding-top: 6px; word-break: break-word; }
+
+  .empty-state { text-align: center; color: #bbb; padding: 24px 16px; font-size: 12px; line-height: 1.6; }
+  .empty-icon { font-size: 24px; margin-bottom: 6px; }
+
+  .status-bar { padding: 8px 16px; font-size: 11px; min-height: 32px; display: flex; align-items: center; }
+  .status-bar.error { color: #e53e3e; background: #fff5f5; }
+  .status-bar.success { color: #38a169; background: #f0fff4; }
+  .status-bar.loading { color: #666; }
+
+  .footer { padding: 12px 16px; display: flex; gap: 8px; border-top: 1px solid #f0f0f0; }
+  .footer .btn { flex: 1; padding: 9px; }
+
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 4px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .badge { display: inline-block; background: #7C4DFF; color: white; border-radius: 10px; padding: 1px 6px; font-size: 10px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <svg width="18" height="18" viewBox="0 0 100 100" fill="none">
+    <rect width="100" height="100" rx="16" fill="#CC785C"/>
+    <path d="M50 20 L80 75 H20 Z" fill="white" opacity="0.9"/>
+  </svg>
+  <h1>Claude 번역기</h1>
+  <span id="savedBadge" class="saved-badge" style="display:none">✓ API 키 저장됨</span>
+</div>
+
+<!-- API Key -->
+<div class="section">
+  <div class="section-title">Anthropic API Key</div>
+  <div class="row">
+    <input type="password" id="apiKey" class="input" placeholder="sk-ant-api03-..." />
+    <button class="btn btn-outline btn-sm" onclick="saveApiKey()">저장</button>
+  </div>
+</div>
+
+<!-- Direction -->
+<div class="section">
+  <div class="section-title">번역 방향</div>
+  <div class="direction-row">
+    <button class="dir-btn active" data-dir="ko-en" onclick="setDirection('ko-en')">한국어 → 영어</button>
+    <button class="dir-btn" data-dir="en-ko" onclick="setDirection('en-ko')">영어 → 한국어</button>
+    <button class="dir-btn" data-dir="auto" onclick="setDirection('auto')">자동 감지</button>
+  </div>
+</div>
+
+<!-- Selection -->
+<div class="section">
+  <div class="section-title">
+    선택된 텍스트
+    <span id="nodeCount" class="badge" style="margin-left:4px">0</span>
+  </div>
+  <div id="textList" class="text-list">
+    <div class="empty-state">
+      <div class="empty-icon">↖️</div>
+      Figma에서 텍스트 또는 프레임을 선택하면<br>여기에 표시됩니다
+    </div>
+  </div>
+</div>
+
+<!-- Status -->
+<div id="statusBar" class="status-bar" style="display:none"></div>
+
+<!-- Footer -->
+<div class="footer">
+  <button id="translateBtn" class="btn btn-primary" onclick="translate()" disabled>번역하기</button>
+  <button id="applyBtn" class="btn btn-outline" onclick="applyTranslations()" disabled>Figma에 적용</button>
+</div>
+
+<script>
+let selectedNodes = [];
+let translations = [];
+let direction = 'ko-en';
+let apiKey = '';
+
+function setDirection(dir) {
+  direction = dir;
+  document.querySelectorAll('.dir-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.dir === dir);
+  });
+}
+
+function saveApiKey() {
+  const key = document.getElementById('apiKey').value.trim();
+  if (!key) { setStatus('API 키를 입력해주세요.', 'error'); return; }
+  apiKey = key;
+  parent.postMessage({ pluginMessage: { type: 'save-api-key', key } }, '*');
+}
+
+function setStatus(msg, type = '') {
+  const el = document.getElementById('statusBar');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.textContent = msg;
+  el.className = `status-bar ${type}`;
+  el.style.display = 'flex';
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+}
+
+function renderTextList() {
+  const list = document.getElementById('textList');
+  document.getElementById('nodeCount').textContent = selectedNodes.length;
+
+  if (selectedNodes.length === 0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">↖️</div>Figma에서 텍스트 또는 프레임을 선택하면<br>여기에 표시됩니다</div>`;
+    document.getElementById('translateBtn').disabled = true;
+    return;
+  }
+
+  list.innerHTML = selectedNodes.map(n => {
+    const t = translations.find(t => t.id === n.id);
+    const preview = n.text.length > 120 ? n.text.slice(0, 120) + '…' : n.text;
+    return `<div class="text-item">
+      <div class="item-label">📝 ${escHtml(n.name)}</div>
+      <div class="item-original">${escHtml(preview)}</div>
+      ${t ? `<div class="item-translated">${escHtml(t.translated)}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  document.getElementById('translateBtn').disabled = !apiKey;
+}
+
+async function translate() {
+  if (!apiKey) { setStatus('API 키를 먼저 입력하고 저장해주세요.', 'error'); return; }
+  if (selectedNodes.length === 0) { setStatus('번역할 텍스트를 선택해주세요.', 'error'); return; }
+
+  const btn = document.getElementById('translateBtn');
+  btn.innerHTML = '<span class="spinner"></span>번역 중...';
+  btn.disabled = true;
+  document.getElementById('applyBtn').disabled = true;
+  setStatus('Claude가 번역하고 있습니다...', 'loading');
+
+  const dirLabel = {
+    'ko-en': '한국어를 자연스러운 영어로',
+    'en-ko': '영어를 자연스러운 한국어로',
+    'auto': '각 텍스트의 언어를 자동으로 감지하여 반대 언어로'
+  }[direction];
+
+  const inputJson = JSON.stringify(
+    selectedNodes.map(n => ({ id: n.id, text: n.text })),
+    null, 2
+  );
+
+  const prompt = `다음 텍스트들을 ${dirLabel} 번역해주세요.
+반드시 아래 JSON 배열 형식으로만 응답하세요. 코드 블록이나 설명은 절대 포함하지 마세요.
+
+입력:
+${inputJson}
+
+응답 형식 (JSON 배열만):
+[{"id": "노드ID", "translated": "번역된 텍스트"}]`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API 오류 (${res.status})`);
+    }
+
+    const data = await res.json();
+    const content = data.content[0].text.trim();
+
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('응답에서 JSON을 찾을 수 없습니다.');
+
+    translations = JSON.parse(jsonMatch[0]);
+    renderTextList();
+    setStatus(`✓ ${translations.length}개 텍스트 번역 완료! "Figma에 적용"을 눌러 반영하세요.`, 'success');
+    document.getElementById('applyBtn').disabled = false;
+
+  } catch (e) {
+    setStatus(`오류: ${e.message}`, 'error');
+  }
+
+  btn.innerHTML = '번역하기';
+  btn.disabled = false;
+}
+
+function applyTranslations() {
+  if (translations.length === 0) return;
+  parent.postMessage({ pluginMessage: { type: 'apply-translations', translations } }, '*');
+  setStatus('Figma에 적용 중...', 'loading');
+  document.getElementById('applyBtn').disabled = true;
+}
+
+// Figma → UI 메시지 수신
+window.onmessage = (event) => {
+  const msg = event.data.pluginMessage;
+  if (!msg) return;
+
+  if (msg.type === 'init') {
+    if (msg.apiKey) {
+      apiKey = msg.apiKey;
+      document.getElementById('apiKey').value = msg.apiKey;
+      document.getElementById('savedBadge').style.display = 'inline';
+    }
+  }
+
+  if (msg.type === 'selection') {
+    selectedNodes = msg.nodes;
+    translations = [];
+    document.getElementById('applyBtn').disabled = true;
+    setStatus('');
+    renderTextList();
+  }
+
+  if (msg.type === 'api-key-saved') {
+    document.getElementById('savedBadge').style.display = 'inline';
+    document.getElementById('translateBtn').disabled = selectedNodes.length === 0;
+    setStatus('✓ API 키가 저장되었습니다.', 'success');
+    setTimeout(() => setStatus(''), 2000);
+  }
+
+  if (msg.type === 'apply-done') {
+    if (msg.success) {
+      setStatus('✓ Figma에 성공적으로 적용되었습니다!', 'success');
+      translations = [];
+      document.getElementById('applyBtn').disabled = true;
+    } else {
+      setStatus(`적용 오류: ${msg.error}`, 'error');
+      document.getElementById('applyBtn').disabled = false;
+    }
+  }
+};
+</script>
+</body>
+</html>

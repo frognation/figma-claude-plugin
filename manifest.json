@@ -1,0 +1,11 @@
+{
+  "name": "jp-figma-translator-claude",
+  "id": "jp-figma-translator-claude",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["design", "slides"],
+  "networkAccess": {
+    "allowedDomains": ["https://api.anthropic.com"]
+  }
+}

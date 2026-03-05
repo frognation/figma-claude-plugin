@@ -1,0 +1,38 @@
+name: Validate & Sync
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    name: Validate Plugin Files
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate manifest.json
+        run: |
+          echo "Validating manifest.json..."
+          cat manifest.json | python3 -m json.tool > /dev/null && echo "manifest.json is valid JSON"
+
+      - name: Check required files
+        run: |
+          files=("manifest.json" "code.js" "ui.html")
+          for file in "${files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✓ $file exists"
+            else
+              echo "✗ $file is missing"
+              exit 1
+            fi
+          done
+
+      - name: Summary
+        run: |
+          echo "Plugin: $(cat manifest.json | python3 -c 'import sys, json; d=json.load(sys.stdin); print(d["name"])')"
+          echo "All checks passed!"
