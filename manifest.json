@@ -4,7 +4,7 @@
   "api": "1.0.0",
   "main": "code.js",
   "ui": "ui.html",
-  "editorType": ["design", "slides"],
+  "editorType": ["figma", "slides"],
   "networkAccess": {
     "allowedDomains": ["https://api.anthropic.com"]
   }
